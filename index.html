@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bag Cost System</title>
+
+<title>Bag Cost Calculator</title>
+
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
 <style>
 body {
@@ -13,28 +16,42 @@ body {
 }
 
 .card {
-  background: white;
-  padding: 15px;
-  border-radius: 10px;
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 12px;
   margin-bottom: 15px;
-  box-shadow: 0 0 5px rgba(0,0,0,0.1);
+  box-shadow: 0 0 6px rgba(0,0,0,0.08);
 }
 
-input {
+h2, h3 {
+  margin-top: 0;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+input, select {
   width: 100%;
-  padding: 8px;
-  margin-top: 6px;
-  margin-bottom: 10px;
+  height: 42px;
+  padding: 8px 10px;
+  margin-top: 4px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 15px;
 }
 
 button {
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   margin-top: 10px;
   background: #444;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
+  font-size: 16px;
 }
 
 #result {
@@ -49,26 +66,52 @@ button {
 <body>
 
 <div class="card">
-  <h2>Job Details</h2>
-  <input type="text" id="jobName" placeholder="Job Name">
+  <h2>Job</h2>
+  <input type="text" id="jobName" placeholder="Enter job name">
 </div>
 
 <div class="card">
   <h3>PP Sheet</h3>
-  <input type="number" id="length" placeholder="Length (inch)">
-  <input type="number" id="width" placeholder="Width (inch)">
-  <input type="number" id="thickness" value="180" placeholder="Micron">
+
+  <label>Length</label>
+  <input type="number" id="length" placeholder="e.g. 12">
+
+  <label>Width</label>
+  <input type="number" id="width" placeholder="e.g. 10">
+
+  <label>Unit</label>
+  <select id="unit">
+    <option value="inch">Inch</option>
+    <option value="cm">CM</option>
+  </select>
+
+  <label>Thickness (micron)</label>
+  <input type="number" id="thickness" value="180">
+
+  <label>Density (g/cm³)</label>
   <input type="number" id="density" value="0.93">
+
+  <label>Price per kg (₹)</label>
   <input type="number" id="pricePerKg" value="125">
 </div>
 
 <div class="card">
   <h3>Rexine</h3>
-  <input type="number" id="rexWidth" value="54" placeholder="Roll width (inch)">
-  <input type="number" id="rexHeight" value="1" placeholder="Length (meter)">
-  <input type="number" id="rexPieceW" placeholder="Piece width">
-  <input type="number" id="rexPieceH" placeholder="Piece height">
-  <input type="number" id="rexCost" value="160" placeholder="₹/meter">
+
+  <label>Roll Width (inch)</label>
+  <input type="number" id="rexWidth" value="54">
+
+  <label>Length Used (meter)</label>
+  <input type="number" id="rexHeight" value="1">
+
+  <label>Piece Width</label>
+  <input type="number" id="rexPieceW" placeholder="e.g. 5">
+
+  <label>Piece Height</label>
+  <input type="number" id="rexPieceH" placeholder="e.g. 5">
+
+  <label>Price per meter (₹)</label>
+  <input type="number" id="rexCost" value="160">
 </div>
 
 <div class="card">
@@ -77,58 +120,75 @@ button {
 </div>
 
 <button onclick="calculate()">Calculate</button>
-<button onclick="saveJob()">Save Job</button>
+<button onclick="saveJob()">Save Job (Download Image)</button>
 
 <div id="result"></div>
 
-<div class="card">
-  <h3>Saved Jobs</h3>
-  <div id="savedJobs"></div>
-</div>
+<!-- Hidden Download Card -->
+<div id="downloadCard" style="
+position:absolute;
+left:-9999px;
+width:350px;
+padding:20px;
+background:white;
+font-family:Arial;
+border-radius:10px;
+"></div>
 
 <script>
-let finalData = {};
+function val(id) {
+  return parseFloat(document.getElementById(id).value) || 0;
+}
 
 function calculate() {
 
-  // PP
-  let L = +length.value * 2.54;
-  let W = +width.value * 2.54;
-  let T = +thickness.value / 10000;
-  let D = +density.value;
-  let priceKg = +pricePerKg.value;
+  let unit = document.getElementById("unit").value;
+
+  let L = val("length");
+  let W = val("width");
+
+  if (unit === "inch") {
+    L *= 2.54;
+    W *= 2.54;
+  }
+
+  let T = val("thickness") / 10000;
+  let D = val("density");
+  let priceKg = val("pricePerKg");
 
   let volume = L * W * T;
   let weightKg = (volume * D) / 1000;
   let weightG = weightKg * 1000;
   let sheetCost = weightKg * priceKg;
 
-  // Rexine
-  let rw = +rexWidth.value;
-  let rh = +rexHeight.value * 39.37;
-  let pw = +rexPieceW.value;
-  let ph = +rexPieceH.value;
-  let costM = +rexCost.value;
+  let rw = val("rexWidth");
+  let rh = val("rexHeight") * 39.37;
+  let pw = val("rexPieceW");
+  let ph = val("rexPieceH");
+  let costM = val("rexCost");
 
   let pieces1 = Math.floor(rw/pw) * Math.floor(rh/ph);
   let pieces2 = Math.floor(rw/ph) * Math.floor(rh/pw);
   let pieces = Math.max(pieces1, pieces2);
 
-  let totalRexCost = +rexHeight.value * costM;
+  if (pieces <= 0) {
+    result.innerHTML = "<p>Invalid rexine cutting</p>";
+    return;
+  }
+
+  let totalRexCost = val("rexHeight") * costM;
   let costPerPiece = totalRexCost / pieces;
   let handlePerBag = costPerPiece * 4;
 
   let totalBags = Math.floor(pieces / 4);
 
-  // Labour
-  let labourCost = +labour.value || 0;
+  let labourCost = val("labour");
 
   let totalCost = sheetCost + handlePerBag + labourCost;
 
-  finalData = {
-    job: jobName.value,
-    sheetSize: `${length.value}x${width.value}`,
-    handleSize: `${pw}x${ph}`,
+  window.finalData = {
+    weightG,
+    totalBags,
     sheetCost,
     handlePerBag,
     labourCost,
@@ -136,44 +196,57 @@ function calculate() {
   };
 
   result.innerHTML = `
-  <h3>${jobName.value || "Result"}</h3>
-  <p><b>PP Weight:</b> ${weightG.toFixed(1)} g</p>
-  <p><b>Total Bags:</b> ${totalBags}</p>
-  <p><b>Sheet Cost:</b> ₹${sheetCost.toFixed(2)}</p>
-  <p><b>Handle Cost / Bag:</b> ₹${handlePerBag.toFixed(2)}</p>
-  <p><b>Labour:</b> ₹${labourCost.toFixed(2)}</p>
-  <hr>
-  <h3>Total: ₹${totalCost.toFixed(2)}</h3>
+    <h3>${jobName.value || "Result"}</h3>
+    <p><b>PP Weight:</b> ${weightG.toFixed(1)} g</p>
+    <p><b>Total Bags:</b> ${totalBags}</p>
+    <p><b>Sheet Cost:</b> ₹${sheetCost.toFixed(2)}</p>
+    <p><b>Handle Cost / Bag:</b> ₹${handlePerBag.toFixed(2)}</p>
+    <p><b>Labour:</b> ₹${labourCost.toFixed(2)}</p>
+    <hr>
+    <h3>Total: ₹${totalCost.toFixed(2)}</h3>
   `;
 }
 
 function saveJob() {
-  if (!finalData.job) {
-    alert("Enter job name first");
+
+  if (!jobName.value) {
+    alert("Enter job name");
     return;
   }
 
-  let jobs = JSON.parse(localStorage.getItem("jobs") || "[]");
-  jobs.push(finalData);
-  localStorage.setItem("jobs", JSON.stringify(jobs));
+  if (!window.finalData) {
+    alert("Calculate first");
+    return;
+  }
 
-  loadJobs();
+  const d = window.finalData;
+
+  const card = document.getElementById("downloadCard");
+
+  card.innerHTML = `
+    <h2>${jobName.value}</h2>
+
+    <p><b>Sheet:</b> ${length.value} x ${width.value}</p>
+    <p><b>Handle:</b> ${rexPieceW.value} x ${rexPieceH.value}</p>
+
+    <hr>
+
+    <p>PP: ₹${d.sheetCost.toFixed(2)}</p>
+    <p>Handle: ₹${d.handlePerBag.toFixed(2)}</p>
+    <p>Labour: ₹${d.labourCost.toFixed(2)}</p>
+
+    <hr>
+
+    <h2>Total: ₹${d.totalCost.toFixed(2)}</h2>
+  `;
+
+  html2canvas(card).then(canvas => {
+    const link = document.createElement("a");
+    link.download = jobName.value + ".jpg";
+    link.href = canvas.toDataURL("image/jpeg", 1.0);
+    link.click();
+  });
 }
-
-function loadJobs() {
-  let jobs = JSON.parse(localStorage.getItem("jobs") || "[]");
-
-  savedJobs.innerHTML = jobs.map(j => `
-    <div style="border-bottom:1px solid #ddd;padding:8px 0">
-      <b>${j.job}</b><br>
-      Sheet: ${j.sheetSize}<br>
-      Handle: ${j.handleSize}<br>
-      Total: ₹${j.totalCost.toFixed(2)}
-    </div>
-  `).join("");
-}
-
-loadJobs();
 </script>
 
 </body>
