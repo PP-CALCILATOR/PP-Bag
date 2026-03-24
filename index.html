@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bag Cost System</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f5f7fa;
+  padding: 15px;
+}
+
+.card {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  box-shadow: 0 0 5px rgba(0,0,0,0.1);
+}
+
+input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  margin-bottom: 10px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  background: #444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+}
+
+#result {
+  background: #fff;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 15px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>Job Details</h2>
+  <input type="text" id="jobName" placeholder="Job Name">
+</div>
+
+<div class="card">
+  <h3>PP Sheet</h3>
+  <input type="number" id="length" placeholder="Length (inch)">
+  <input type="number" id="width" placeholder="Width (inch)">
+  <input type="number" id="thickness" value="180" placeholder="Micron">
+  <input type="number" id="density" value="0.93">
+  <input type="number" id="pricePerKg" value="125">
+</div>
+
+<div class="card">
+  <h3>Rexine</h3>
+  <input type="number" id="rexWidth" value="54" placeholder="Roll width (inch)">
+  <input type="number" id="rexHeight" value="1" placeholder="Length (meter)">
+  <input type="number" id="rexPieceW" placeholder="Piece width">
+  <input type="number" id="rexPieceH" placeholder="Piece height">
+  <input type="number" id="rexCost" value="160" placeholder="₹/meter">
+</div>
+
+<div class="card">
+  <h3>Labour</h3>
+  <input type="number" id="labour" placeholder="Labour per bag">
+</div>
+
+<button onclick="calculate()">Calculate</button>
+<button onclick="saveJob()">Save Job</button>
+
+<div id="result"></div>
+
+<div class="card">
+  <h3>Saved Jobs</h3>
+  <div id="savedJobs"></div>
+</div>
+
+<script>
+let finalData = {};
+
+function calculate() {
+
+  // PP
+  let L = +length.value * 2.54;
+  let W = +width.value * 2.54;
+  let T = +thickness.value / 10000;
+  let D = +density.value;
+  let priceKg = +pricePerKg.value;
+
+  let volume = L * W * T;
+  let weightKg = (volume * D) / 1000;
+  let weightG = weightKg * 1000;
+  let sheetCost = weightKg * priceKg;
+
+  // Rexine
+  let rw = +rexWidth.value;
+  let rh = +rexHeight.value * 39.37;
+  let pw = +rexPieceW.value;
+  let ph = +rexPieceH.value;
+  let costM = +rexCost.value;
+
+  let pieces1 = Math.floor(rw/pw) * Math.floor(rh/ph);
+  let pieces2 = Math.floor(rw/ph) * Math.floor(rh/pw);
+  let pieces = Math.max(pieces1, pieces2);
+
+  let totalRexCost = +rexHeight.value * costM;
+  let costPerPiece = totalRexCost / pieces;
+  let handlePerBag = costPerPiece * 4;
+
+  let totalBags = Math.floor(pieces / 4);
+
+  // Labour
+  let labourCost = +labour.value || 0;
+
+  let totalCost = sheetCost + handlePerBag + labourCost;
+
+  finalData = {
+    job: jobName.value,
+    sheetSize: `${length.value}x${width.value}`,
+    handleSize: `${pw}x${ph}`,
+    sheetCost,
+    handlePerBag,
+    labourCost,
+    totalCost
+  };
+
+  result.innerHTML = `
+  <h3>${jobName.value || "Result"}</h3>
+  <p><b>PP Weight:</b> ${weightG.toFixed(1)} g</p>
+  <p><b>Total Bags:</b> ${totalBags}</p>
+  <p><b>Sheet Cost:</b> ₹${sheetCost.toFixed(2)}</p>
+  <p><b>Handle Cost / Bag:</b> ₹${handlePerBag.toFixed(2)}</p>
+  <p><b>Labour:</b> ₹${labourCost.toFixed(2)}</p>
+  <hr>
+  <h3>Total: ₹${totalCost.toFixed(2)}</h3>
+  `;
+}
+
+function saveJob() {
+  if (!finalData.job) {
+    alert("Enter job name first");
+    return;
+  }
+
+  let jobs = JSON.parse(localStorage.getItem("jobs") || "[]");
+  jobs.push(finalData);
+  localStorage.setItem("jobs", JSON.stringify(jobs));
+
+  loadJobs();
+}
+
+function loadJobs() {
+  let jobs = JSON.parse(localStorage.getItem("jobs") || "[]");
+
+  savedJobs.innerHTML = jobs.map(j => `
+    <div style="border-bottom:1px solid #ddd;padding:8px 0">
+      <b>${j.job}</b><br>
+      Sheet: ${j.sheetSize}<br>
+      Handle: ${j.handleSize}<br>
+      Total: ₹${j.totalCost.toFixed(2)}
+    </div>
+  `).join("");
+}
+
+loadJobs();
+</script>
+
+</body>
+</html>
